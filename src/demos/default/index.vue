@@ -1,6 +1,6 @@
 <template>
   <div id="app">
-    <vg6 :data="graphData" :options="options" />
+    <vg6 :data="graphData" :options="options" @afterLayout="afterLayout" />
   </div>
 </template>
 
@@ -18,10 +18,15 @@ export default {
     };
   },
   mounted(){
-      // this.graphData = data;
-      // this.options = options;
     console.log(this.graphData)
 
+  },
+  methods: {
+    afterLayout(graph){
+      console.log(graph)
+      this.graph = graph;
+      console.log(this.graph.getNodes())
+    }
   }
 };
 </script>

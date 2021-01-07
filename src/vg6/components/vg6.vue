@@ -51,6 +51,7 @@ export default {
     console.log(G6.Layout);
     console.log("data", this.data);
     this.initGraph();
+    this.addEvent()
   },
   methods: {
     initGraph() {
@@ -128,18 +129,19 @@ export default {
 
           if (!shouldBegin.call(self, evt)) {
             return;
-          } // allow to select multiple nodes but did not press a key || do not allow the select multiple nodes
+          }
+          // 先按下shift键，选择第一个对象时，其实应该是单选状态
+          const hasSelectedTarget = _this.checkSelectedTarget(ALL_TYPE);
 
-          if (!keydown || !multiple) {
+          // 非多选状态
+          if (!keydown || !hasSelectedTarget || !multiple) {
             ALL_TYPE.forEach((type) => {
-              graph
-                .findAllByState(type, self.selectedState)
-                .forEach((combo) => {
-                  console.log("combo", combo);
-                  if (combo !== item) {
-                    graph.setItemState(combo, self.selectedState, false);
-                  }
-                });
+              graph.findAll(type, (combo) => {
+                if (combo !== item) {
+                  graph.clearItemStates(combo);
+                  graph.setItemState(combo, "dark", true);
+                }
+              });
             });
           }
 
@@ -151,25 +153,18 @@ export default {
             if (shouldUpdate.call(self, evt)) {
               graph.setItemState(item, self.selectedState, true);
               // 更新选中样式
-              _this.refreshSelectedStyle(c_type, item);
+              _this.refreshSelectedStyle(c_type, item, ALL_TYPE);
             }
           }
         },
         onCanvasClick: function onCanvasClick() {
           var _this = this;
-
           var graph = this.graph;
-          graph.getNodes().forEach((node) => {
-            graph.clearItemStates(node);
-          });
-
-          graph.getEdges().forEach((edge) => {
-            graph.clearItemStates(edge);
-          });
-
-          graph.getCombos().forEach((combo) => {
-            graph.clearItemStates(combo);
-          });
+          ALL_TYPE.forEach(type => {
+            graph.findAll(type, combo => {
+              graph.clearItemStates(combo)
+            })
+          })
         },
         onKeyDown: function onKeyDown(e) {
           var self = this;
@@ -195,44 +190,59 @@ export default {
       });
     },
 
-    refreshSelectedStyle(type, item) {
+    refreshSelectedStyle(type, item, ALL_TYPE) {
       const graph = this.graph;
-      graph.setAutoPaint(false);
-
-      graph.getNodes().forEach(function (node) {
-        graph.setItemState(node, "highlight", false);
-        graph.setItemState(node, "dark", true);
-      });
-      graph.getEdges().forEach(function (node) {
-        graph.setItemState(node, "highlight", false);
-        graph.setItemState(node, "dark", true);
-      });
 
       graph.setItemState(item, "dark", false);
-      // graph.setItemState(item, "highlight", true);
 
-      type == 'node' && graph.getEdges().forEach(function (edge) {
-        if (edge.getSource() === item) {
-          graph.setItemState(edge.getTarget(), "dark", false);
-          graph.setItemState(edge.getTarget(), "highlight", true);
-          graph.setItemState(edge, "highlight", true);
-          edge.toFront();
-        } else if (edge.getTarget() === item) {
-          graph.setItemState(edge.getSource(), "dark", false);
-          graph.setItemState(edge.getSource(), "highlight", true);
-          graph.setItemState(edge, "highlight", true);
-          edge.toFront();
-        } else {
-          graph.setItemState(edge, "highlight", false);
-        }
-      });
-      type == 'edge' && (graph.setItemState(item.getTarget(), "dark", false),
-          graph.setItemState(item.getTarget(), "highlight", true), 
-          graph.setItemState(item.getSource(), "dark", false),
-          graph.setItemState(item.getSource(), "highlight", true))
-      graph.paint();
-      graph.setAutoPaint(true);
+      type == "node" &&
+        graph.getEdges().forEach(function (edge) {
+          if (edge.getSource() === item) {
+            graph.setItemState(edge.getTarget(), "dark", false);
+            graph.setItemState(edge.getTarget(), "highlight", true);
+            graph.setItemState(edge, "highlight", true);
+            edge.toFront();
+          } else if (edge.getTarget() === item) {
+            graph.setItemState(edge.getSource(), "dark", false);
+            graph.setItemState(edge.getSource(), "highlight", true);
+            graph.setItemState(edge, "highlight", true);
+            edge.toFront();
+          } else {
+            graph.setItemState(edge, "highlight", false);
+          }
+        });
+      type == "edge" &&
+        (graph.setItemState(item.getTarget(), "dark", false),
+        graph.setItemState(item.getSource(), "dark", false),
+        graph.setItemState(item.getSource(), "highlight", true),
+        graph.setItemState(item.getTarget(), "highlight", true));
+      console.log(item)
     },
+
+    checkSelectedTarget(ALL_TYPE) {
+      let hasSelectedTarget = false;
+      ALL_TYPE.forEach((type) => {
+        const length = this.graph.findAllByState(type, 'selected')
+          .length;
+        length > 0 && (hasSelectedTarget = true);
+      });
+      console.log("hasSelectedTarget", hasSelectedTarget);
+      return hasSelectedTarget
+    },
+    addEvent(){
+      this.graph.on('beforelayout', evt => {
+        console.log('beforelayout', evt)
+      })
+
+      this.graph.on('afterlayout', evt => {
+        console.log('afterlayout', evt)
+        this.$emit('afterLayout', this.graph)
+      })
+
+      this.graph.on('aftergraphrefresh', evt => {
+        console.log('aftergraphrefresh', evt)
+      })
+    }
   },
 };
 </script>
